@@ -4,6 +4,7 @@ import javax.annotation.PostConstruct;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
@@ -24,5 +25,11 @@ public class AutoServiceRegistrationAutoConfiguration {
 		if (autoServiceRegistration == null && this.properties.isFailFast()) {
 			throw new IllegalStateException("Auto Service Registration has been requested, but there is no AutoServiceRegistration bean");
 		}
+	}
+
+	@Bean
+	@ConditionalOnBean(HasDynamicPort.class)
+	public DynamicPortApplicationListener dynamicPortApplicationListener(HasDynamicPort hasDynamicPort) {
+		return new DynamicPortApplicationListener(hasDynamicPort);
 	}
 }

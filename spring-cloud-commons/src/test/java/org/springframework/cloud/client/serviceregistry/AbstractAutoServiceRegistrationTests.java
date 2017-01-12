@@ -1,15 +1,15 @@
 package org.springframework.cloud.client.serviceregistry;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import static org.hamcrest.Matchers.instanceOf;
@@ -25,41 +25,62 @@ import static org.springframework.boot.test.context.SpringBootTest.WebEnvironmen
  */
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = AbstractAutoServiceRegistrationTests.Config.class,
-		properties = "management.port=0", webEnvironment = RANDOM_PORT)
+		properties = {"SPRING_APPLICATION_NAME=myautoservregtest1", "management.port=0"},
+		webEnvironment = RANDOM_PORT)
 public class AbstractAutoServiceRegistrationTests {
 
 	@Autowired
-	private TestAutoServiceRegistration autoRegistration;
+	protected TestAutoServiceRegistration autoRegistration;
+
+	@Autowired
+	protected TestRegistration registration;
 
 	@Value("${local.server.port}")
 	private int port;
 
 	@Value("${local.management.port}")
-	private int managementPort;
+	protected int managementPort;
+
+	protected int getPort() {
+		return port;
+	}
 
 	@Test
 	public void portsWork() {
-		assertNotEquals("Lifecycle port is zero", 0, autoRegistration.getPort().get());
-		assertNotEquals("Lifecycle port is management port", managementPort, autoRegistration.getPort().get());
-		assertEquals("Lifecycle port is wrong", port, autoRegistration.getPort().get());
-		assertTrue("Lifecycle not running", autoRegistration.isRunning());
+		assertNotEquals("Registration port is zero", 0, registration.getPort());
+		assertNotEquals("Registration port is management port", managementPort, registration.getPort());
+		assertEquals("Registration port is wrong", getPort(), registration.getPort());
+
+		assertTrue("AutoServiceRegistration not running", autoRegistration.isRunning());
+		assertEquals("AutoServiceRegistration appName is wrong", getApplicationName(), autoRegistration.getAppName());
+
 		assertThat("ServiceRegistry is wrong type", autoRegistration.getServiceRegistry(), is(instanceOf(TestServiceRegistry.class)));
 		TestServiceRegistry serviceRegistry = (TestServiceRegistry) autoRegistration.getServiceRegistry();
-		assertTrue("Lifecycle not registered", serviceRegistry.isRegistered());
-		assertEquals("Lifecycle appName is wrong", "application", autoRegistration.getAppName());
+		assertTrue("ServiceRegistry not registered", serviceRegistry.isRegistered());
+	}
+
+	protected String getApplicationName() {
+		return "myautoservregtest1";
 	}
 
 	@EnableAutoConfiguration
 	@Configuration
+	@Import({AutoServiceRegistrationConfiguration.class,
+			AutoServiceRegistrationAutoConfiguration.class})
 	public static class Config {
 		@Bean
+		@ConditionalOnMissingBean
+		public TestRegistration registration() {
+			return new TestRegistration();
+		}
+
+		@Bean
 		public TestAutoServiceRegistration testAutoServiceRegistration() {
-			return new TestAutoServiceRegistration();
+			return new TestAutoServiceRegistration(registration());
 		}
 	}
 
-	public static class TestRegistration implements Registration {
-	}
+	public static class TestRegistration extends AbstractRegistration {}
 
 	public static class TestServiceRegistry implements ServiceRegistry<TestRegistration> {
 		private boolean registered = false;
@@ -99,45 +120,28 @@ public class AbstractAutoServiceRegistrationTests {
 	}
 
 	public static class TestAutoServiceRegistration extends AbstractAutoServiceRegistration<TestRegistration> {
-		private int port = 0;
 
-		@Override
-		protected AtomicInteger getPort() {
-			return super.getPort();
-		}
+		private final TestRegistration registration;
+		private final TestRegistration mgmtRegistration = new TestRegistration();
 
 		@Override
 		protected String getAppName() {
 			return super.getAppName();
 		}
 
-		protected TestAutoServiceRegistration() {
+		protected TestAutoServiceRegistration(TestRegistration registration) {
 			super(new TestServiceRegistry());
-		}
-
-		@Override
-		protected int getConfiguredPort() {
-			return port;
-		}
-
-		@Override
-		protected void setConfiguredPort(int port) {
-			this.port = port;
+			this.registration = registration;
 		}
 
 		@Override
 		protected TestRegistration getRegistration() {
-			return null;
+			return this.registration;
 		}
 
 		@Override
 		protected TestRegistration getManagementRegistration() {
-			return null;
-		}
-
-		@Override
-		protected Object getConfiguration() {
-			return null;
+			return this.mgmtRegistration;
 		}
 
 		@Override
