@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
@@ -19,6 +20,7 @@ import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
+import static org.springframework.cloud.client.discovery.ManagementNamingUtils.getAppName;
 
 /**
  * @author Spencer Gibb
@@ -34,6 +36,9 @@ public class AbstractAutoServiceRegistrationTests {
 
 	@Autowired
 	protected TestRegistration registration;
+
+	@Autowired
+	protected ApplicationContext context;
 
 	@Value("${local.server.port}")
 	private int port;
@@ -52,7 +57,7 @@ public class AbstractAutoServiceRegistrationTests {
 		assertEquals("Registration port is wrong", getPort(), registration.getPort());
 
 		assertTrue("AutoServiceRegistration not running", autoRegistration.isRunning());
-		assertEquals("AutoServiceRegistration appName is wrong", getApplicationName(), autoRegistration.getAppName());
+		assertEquals("AutoServiceRegistration appName is wrong", getApplicationName(), getAppName(context));
 
 		assertThat("ServiceRegistry is wrong type", autoRegistration.getServiceRegistry(), is(instanceOf(TestServiceRegistry.class)));
 		TestServiceRegistry serviceRegistry = (TestServiceRegistry) autoRegistration.getServiceRegistry();
@@ -123,11 +128,6 @@ public class AbstractAutoServiceRegistrationTests {
 
 		private final TestRegistration registration;
 		private final TestRegistration mgmtRegistration = new TestRegistration();
-
-		@Override
-		protected String getAppName() {
-			return super.getAppName();
-		}
 
 		protected TestAutoServiceRegistration(TestRegistration registration) {
 			super(new TestServiceRegistry());

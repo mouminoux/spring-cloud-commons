@@ -15,7 +15,6 @@ import org.springframework.context.ApplicationContextAware;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.core.Ordered;
-import org.springframework.core.env.Environment;
 
 /**
  * Lifecycle methods that may be useful and common to {@link ServiceRegistry} implementations.
@@ -146,43 +145,13 @@ public abstract class AbstractAutoServiceRegistration<R extends Registration> im
 	 * @return if the management service should be registered with the {@link ServiceRegistry}
 	 */
 	protected boolean shouldRegisterManagement() {
-		return getManagementPort() != null && ManagementServerPortUtils.isDifferent(this.context);
+		return ManagementServerPortUtils.getPort(this.context) != null && ManagementServerPortUtils.isDifferent(this.context);
 	}
 
 	/**
 	 * @return true, if the {@link AutoServiceRegistration} is enabled
 	 */
 	protected abstract boolean isEnabled();
-
-	/**
-	 * @return the serviceId of the Management Service
-	 */
-	protected String getManagementServiceId() {
-		// TODO: configurable management suffix
-		return this.context.getId() + ":management";
-	}
-
-	/**
-	 * @return the service name of the Management Service
-	 */
-	protected String getManagementServiceName() {
-		// TODO: configurable management suffix
-		return getAppName() + ":management";
-	}
-
-	/**
-	 * @return the management server port
-	 */
-	protected Integer getManagementPort() {
-		return ManagementServerPortUtils.getPort(this.context);
-	}
-
-	/**
-	 * @return the app name, currently the spring.application.name property
-	 */
-	protected String getAppName() {
-		return this.propertyResolver.getProperty("spring.application.name", "application");
-	}
 
 	@PreDestroy
 	public void destroy() {
