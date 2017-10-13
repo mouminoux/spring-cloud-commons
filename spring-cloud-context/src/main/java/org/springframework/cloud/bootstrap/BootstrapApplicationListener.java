@@ -30,6 +30,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.builder.ParentContextApplicationContextInitializer;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.context.event.ApplicationEnvironmentPreparedEvent;
+import org.springframework.boot.logging.LoggingApplicationListener;
 import org.springframework.cloud.bootstrap.encrypt.EnvironmentDecryptApplicationInitializer;
 import org.springframework.context.ApplicationContextInitializer;
 import org.springframework.context.ApplicationListener;
@@ -172,6 +173,16 @@ public class BootstrapApplicationListener
 		}
 		AnnotationAwareOrderComparator.sort(sources);
 		builder.sources(sources.toArray(new Class[sources.size()]));
+
+		// Remove LoggingApplicationListener listener because it has side effects
+		List<ApplicationListener<?>> newListeners = new ArrayList<>();
+		for (ApplicationListener<?> listener : builder.application().getListeners()) {
+			if (!(listener instanceof LoggingApplicationListener)) {
+				newListeners.add(listener);
+			}
+		}
+		builder.application().setListeners(newListeners);
+
 		final ConfigurableApplicationContext context = builder.run();
 		// Make the bootstrap context a parent of the app context
 		addAncestorInitializer(application, context);
